@@ -2,8 +2,6 @@
 
 An open-source React application that analyzes cybersecurity articles and generates interactive attack flow visualizations using the MITRE ATT&CK framework.
 
-![FlowViz Demo](./demo.png)
-
 ## ✨ Features
 
 - 🔍 **Article Analysis**: Extract attack patterns from cybersecurity articles and reports
