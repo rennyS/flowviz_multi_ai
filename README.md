@@ -28,8 +28,8 @@ An open-source React application that analyzes cybersecurity articles and genera
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd flow-viz
+   git clone https://github.com/davidljohnson/flowviz.git
+   cd flowviz
    ```
 
 2. **Install dependencies**
