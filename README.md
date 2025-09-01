@@ -141,30 +141,42 @@ The application includes comprehensive error handling with:
 ```
 flow-viz/
 ├── src/
-│   ├── components/          # React components
-│   │   ├── FlowVisualization/  # Main visualization components
-│   │   ├── SavedFlows/         # Save/Load dialog system
-│   │   └── ErrorBoundary/      # Error handling
-│   ├── services/           # API and parsing services
-│   │   ├── claude/            # Claude AI integration
-│   │   ├── article/           # Content extraction
-│   │   └── export/            # File export utilities
-│   ├── types/              # TypeScript type definitions
-│   └── App.tsx             # Main application
+│   ├── features/           # Feature-based architecture
+│   │   ├── app/               # Core application components
+│   │   │   ├── components/       # AppBar, SearchForm, SettingsDialog
+│   │   │   └── hooks/           # useAppState and other app hooks
+│   │   ├── flow-analysis/      # Attack flow analysis and visualization
+│   │   │   ├── components/      # StreamingFlowVisualization and nodes
+│   │   │   ├── services/        # Claude AI integration and flow conversion
+│   │   │   └── types/          # Attack flow type definitions
+│   │   ├── flow-export/        # Export functionality
+│   │   │   └── services/        # STIX and Attack Flow exporters
+│   │   └── flow-storage/       # Save/Load functionality
+│   │       ├── components/      # LoadFlowDialog, SaveFlowDialog
+│   │       ├── services/        # LocalStorageService
+│   │       └── types/          # SavedFlow types
+│   ├── shared/             # Shared components and utilities
+│   │   ├── components/         # Reusable UI components
+│   │   ├── services/          # Image processing, vision services
+│   │   ├── theme/             # Material-UI theme configuration
+│   │   └── utils/             # Shared utilities
+│   ├── App.tsx             # Main application component
+│   └── main.tsx            # Application entry point
 ├── server.js               # Express proxy server with security features
 ├── security-utils.js       # Shared security utilities (SSRF protection, rate limiting)
 ├── .env.example            # Environment configuration template
-├── vite.config.ts          # Vite configuration
+├── vite.config.ts          # Vite configuration with TypeScript
 └── package.json            # Dependencies and scripts
 ```
 
 ### Adding New Features
-1. Create components in `src/components/` following existing patterns
-2. Add services in `src/services/` with proper error handling
-3. Define TypeScript types in `src/types/`
-4. Follow the existing glassmorphism design system
-5. Update error handling and user feedback
-6. Test with various article types and formats
+1. Create feature directories in `src/features/` following existing patterns
+2. Add shared components in `src/shared/components/` with proper TypeScript types
+3. Add feature-specific services in the appropriate feature's `services/` directory
+4. Define TypeScript types in feature-specific `types/` directories or `src/shared/`
+5. Follow the existing glassmorphism design system and Material-UI theming
+6. Update error handling and user feedback using shared error boundaries
+7. Test with various article types and formats
 
 ### Environment Variables
 
