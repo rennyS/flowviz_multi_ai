@@ -139,7 +139,7 @@ The application includes comprehensive error handling with:
 
 ### Project Structure
 ```
-flow-viz/
+flowviz/
 ├── src/
 │   ├── features/           # Feature-based architecture
 │   │   ├── app/               # Core application components
