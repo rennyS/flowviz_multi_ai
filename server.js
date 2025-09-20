@@ -14,7 +14,29 @@ import { logger } from './src/shared/utils/logger.js';
 import dotenv from 'dotenv';
 
 // Load environment variables from .env file
-dotenv.config();
+const dotenvResult = dotenv.config();
+
+// Force values from .env file if available
+if (dotenvResult.parsed) {
+  // Make sure .env variables take precedence over shell environment
+  if (dotenvResult.parsed.ANTHROPIC_API_KEY) {
+    process.env.ANTHROPIC_API_KEY = dotenvResult.parsed.ANTHROPIC_API_KEY;
+  }
+  
+  if (dotenvResult.parsed.ANTHROPIC_BASE_URL) {
+    process.env.ANTHROPIC_BASE_URL = dotenvResult.parsed.ANTHROPIC_BASE_URL;
+  }
+  
+  if (dotenvResult.parsed.ANTHROPIC_MODEL) {
+    process.env.ANTHROPIC_MODEL = dotenvResult.parsed.ANTHROPIC_MODEL;
+  }
+}
+
+// Log the loaded environment variables to verify .env file loading
+console.log('[ENV] Loaded from .env file:', dotenvResult.parsed ? 'YES' : 'NO');
+console.log('[ENV] ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '***' + process.env.ANTHROPIC_API_KEY.slice(-4) : 'Not set');
+console.log('[ENV] ANTHROPIC_BASE_URL:', process.env.ANTHROPIC_BASE_URL || 'Not set');
+console.log('[ENV] ANTHROPIC_MODEL:', process.env.ANTHROPIC_MODEL || 'Not set');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -269,13 +291,20 @@ app.post('/api/vision-analysis', rateLimits.streaming, async (req, res) => {
     
     logger.info(`Vision analysis request: ${images.length} images, ${articleText.length} chars of text`);
     
-    // Initialize Anthropic client with server API key
+    // Initialize Anthropic client with server API key and base URL
     const apiKey = process.env.ANTHROPIC_API_KEY;
+    const baseURL = process.env.ANTHROPIC_BASE_URL;
+    
     if (!apiKey) {
       return res.status(500).json({ error: 'Server configuration error: Anthropic API key not configured' });
     }
     
-    const anthropic = new Anthropic({ apiKey });
+    const anthropicConfig = { apiKey };
+    if (baseURL) {
+      anthropicConfig.baseURL = baseURL;
+    }
+    
+    const anthropic = new Anthropic(anthropicConfig);
     
     // Build the vision analysis prompt
     const prompt = buildVisionPrompt(articleText, images.length);
@@ -284,8 +313,9 @@ app.post('/api/vision-analysis', rateLimits.streaming, async (req, res) => {
     const messageContent = buildMessageContent(images, prompt);
     
     // Make the API call
+    const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: model,
       max_tokens: 4000,
       temperature: 0.1,
       messages: [
@@ -384,7 +414,8 @@ app.post('/api/claude-stream', rateLimits.streaming, async (req, res) => {
 
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    logger.debug('API Key availability check', { available: !!apiKey });
+    const baseURL = process.env.ANTHROPIC_BASE_URL;
+    logger.debug('API Key availability check', { available: !!apiKey, baseURLSet: !!baseURL });
     
     if (!apiKey) {
       logger.error('Missing Anthropic API key configuration');
@@ -519,9 +550,14 @@ Focus on actionable technical intelligence that supplements the article text.`;
               });
             }
             
-            const anthropic = new Anthropic({ apiKey });
+            const anthropicConfig = { apiKey };
+            if (baseURL) {
+              anthropicConfig.baseURL = baseURL;
+            }
+            const anthropic = new Anthropic(anthropicConfig);
+            const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
             const visionResponse = await anthropic.messages.create({
-              model: 'claude-3-5-sonnet-20241022',
+              model: model,
               max_tokens: 4000,
               temperature: 0.1,
               messages: [{ role: 'user', content: messageContent }]
@@ -666,7 +702,8 @@ Article: "${finalText.substring(0, 50000)}"
 Article text:
 `;
 
-    const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    const anthropicApiUrl = baseURL ? `${baseURL}/v1/messages` : 'https://api.anthropic.com/v1/messages';
+    const aiResponse = await fetch(anthropicApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -674,7 +711,7 @@ Article text:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
         max_tokens: 16000,
         temperature: 0.1,
         stream: true,
@@ -724,8 +761,9 @@ Article text:
 });
 
 // Proxy Anthropic API requests
+const anthropicTarget = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
 app.use('/anthropic', createProxyMiddleware({
-  target: 'https://api.anthropic.com',
+  target: anthropicTarget,
   changeOrigin: true,
   pathRewrite: {
     '^/anthropic': '',
