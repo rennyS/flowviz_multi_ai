@@ -147,7 +147,7 @@ flowviz/
 │   │   │   └── hooks/           # useAppState and other app hooks
 │   │   ├── flow-analysis/      # Attack flow analysis and visualization
 │   │   │   ├── components/      # StreamingFlowVisualization and nodes
-│   │   │   ├── services/        # Claude AI integration and flow conversion
+│   │   │   ├── services/        # Anthropic integration and flow conversion
 │   │   │   └── types/          # Attack flow type definitions
 │   │   ├── flow-export/        # Export functionality
 │   │   │   └── services/        # STIX and Attack Flow exporters
@@ -182,7 +182,7 @@ flowviz/
 
 **Required:**
 ```env
-ANTHROPIC_API_KEY=your_api_key_here  # Required for server-side Claude API calls
+ANTHROPIC_API_KEY=your_api_key_here  # Required for server-side Anthropic API calls
 ```
 
 **Optional (with defaults):**
