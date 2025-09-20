@@ -313,7 +313,7 @@ app.post('/api/vision-analysis', rateLimits.streaming, async (req, res) => {
     const messageContent = buildMessageContent(images, prompt);
     
     // Make the API call
-    const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+    const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514';
     const response = await anthropic.messages.create({
       model: model,
       max_tokens: 4000,
@@ -555,7 +555,7 @@ Focus on actionable technical intelligence that supplements the article text.`;
               anthropicConfig.baseURL = baseURL;
             }
             const anthropic = new Anthropic(anthropicConfig);
-            const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+            const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514';
             const visionResponse = await anthropic.messages.create({
               model: model,
               max_tokens: 4000,

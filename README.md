@@ -187,6 +187,12 @@ ANTHROPIC_API_KEY=your_api_key_here  # Required for server-side Anthropic API ca
 
 **Optional (with defaults):**
 ```env
+# Anthropic Configuration
+ANTHROPIC_BASE_URL=https://api.anthropic.com  # Custom API endpoint (for proxies)
+ANTHROPIC_MODEL=claude-sonnet-4-20250514      # Default: Claude Sonnet 4
+# Note: Tested with both Claude 3.5 and 4 - Claude 4 performs better with larger context window
+# If cost is a concern, Claude 3.5 (claude-3-5-sonnet-20241022) can be used
+
 # Server Configuration
 PORT=3001                    # Server port (default: 3001)
 NODE_ENV=development         # Environment: development | production
