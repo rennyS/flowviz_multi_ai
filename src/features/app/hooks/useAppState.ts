@@ -28,7 +28,7 @@ export const useAppState = () => {
   
   // Content and visualization state
   const [articleContent, setArticleContent] = useState<any>(null);
-  const [exportFunction, setExportFunction] = useState<((format: 'png' | 'json' | 'afb') => void) | null>(null);
+  const [exportFunction, setExportFunction] = useState<((format: 'png' | 'json' | 'afb' | 'flowviz') => void) | null>(null);
   const [clearVisualization, setClearVisualization] = useState<(() => void) | null>(null);
   const [storyModeData, setStoryModeData] = useState<any>(null);
   const [getSaveData, setGetSaveData] = useState<(() => { nodes: any[], edges: any[], viewport: any }) | null>(null);

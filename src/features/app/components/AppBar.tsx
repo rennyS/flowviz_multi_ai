@@ -14,6 +14,7 @@ import TextFieldsIcon from '@mui/icons-material/TextFields';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import SettingsIcon from '@mui/icons-material/Settings';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { keyframes } from '@mui/system';
 import ToolbarStoryModeControls from '../../flow-analysis/components/components/ToolbarStoryModeControls';
 import { ActionMenu } from '../../../shared/components/Dropdown';
@@ -31,11 +32,11 @@ const streamingGradient = keyframes`
 
 interface AppBarProps {
   isStreaming: boolean;
-  exportFunction: ((format: 'png' | 'json' | 'afb') => void) | null;
+  exportFunction: ((format: 'png' | 'json' | 'afb' | 'flowviz') => void) | null;
   storyModeData: any;
-  showGraphActions: boolean; // Whether to show graph-specific actions (New search, Save)
+  showGraphActions: boolean;
   onNewSearch: () => void;
-  onDownloadClick: (format: 'png' | 'json' | 'afb') => void;
+  onDownloadClick: (format: 'png' | 'json' | 'afb' | 'flowviz') => void;
   onSaveClick: () => void;
   onLoadClick: () => void;
   onSettingsClick: () => void;
@@ -62,7 +63,7 @@ export default function AppBar({
     setDownloadMenuAnchor(null);
   };
 
-  const handleDownloadClick = (format: 'png' | 'json' | 'afb') => {
+  const handleDownloadClick = (format: 'png' | 'json' | 'afb' | 'flowviz') => {
     onDownloadClick(format);
     handleDownloadMenuClose();
   };
@@ -222,6 +223,12 @@ export default function AppBar({
               text: 'Export as AFB',
               icon: <TextFieldsIcon fontSize="small" />,
               onClick: () => handleDownloadClick('afb'),
+            },
+            {
+              id: 'flowviz',
+              text: 'Export as FlowViz',
+              icon: <AccountTreeIcon fontSize="small" />,
+              onClick: () => handleDownloadClick('flowviz'),
             },
           ]}
         />

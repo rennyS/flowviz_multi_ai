@@ -274,7 +274,7 @@ export default function App() {
     }
   };
 
-  const handleExportAvailable = (exportFn: (format: 'png' | 'json' | 'afb') => void) => {
+  const handleExportAvailable = (exportFn: (format: 'png' | 'json' | 'afb' | 'flowviz') => void) => {
     setExportFunction(() => exportFn);
   };
 
@@ -293,7 +293,7 @@ export default function App() {
     }
   };
 
-  const handleDownloadClick = (format: 'png' | 'json' | 'afb') => {
+  const handleDownloadClick = (format: 'png' | 'json' | 'afb' | 'flowviz') => {
     if (exportFunction) {
       exportFunction(format);
       showToast(`Exported as ${format.toUpperCase()}`, 'success');

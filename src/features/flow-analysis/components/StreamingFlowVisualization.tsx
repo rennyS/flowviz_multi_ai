@@ -13,6 +13,7 @@ import {
 import { toPng } from 'html-to-image';
 import { STIXBundleExporter } from '../../flow-export/services/stixBundleExporter';
 import { AttackFlowV3Exporter } from '../../flow-export/services/attackFlowV3Exporter';
+import { SavedFlow } from '../../flow-storage/types/SavedFlow';
 import 'reactflow/dist/style.css';
 import { Box } from '@mui/material';
 import ErrorBoundary from '../../../shared/components/ErrorBoundary';
@@ -35,7 +36,7 @@ export interface StreamingFlowVisualizationProps {
     edges: any[];
     viewport?: any;
   };
-  onExportAvailable?: (exportFn: (format: 'png' | 'json' | 'afb') => void) => void;
+  onExportAvailable?: (exportFn: (format: 'png' | 'json' | 'afb' | 'flowviz') => void) => void;
   onClearAvailable?: (clearFn: () => void) => void;
   onStoryModeAvailable?: (storyData: {
     storyState: any;
@@ -410,7 +411,7 @@ const StreamingFlowVisualizationContent: React.FC<StreamingFlowVisualizationProp
   const handleSelectionDragStop = useCallback(() => {
   }, []);
 
-  const handleExport = useCallback(async (format: 'png' | 'json' | 'afb') => {
+  const handleExport = useCallback(async (format: 'png' | 'json' | 'afb' | 'flowviz') => {
     const filename = `attack-flow-${Date.now()}`;
     
     if (format === 'png') {
@@ -512,12 +513,61 @@ const StreamingFlowVisualizationContent: React.FC<StreamingFlowVisualizationProp
       
       URL.revokeObjectURL(url);
     } else if (format === 'afb') {
-      // Export as Attack Flow V3 for MITRE ATT&CK Flow Builder
       const v3Exporter = new AttackFlowV3Exporter();
       v3Exporter.exportToFile(nodes, edges, `${filename}.afb`);
       console.log('✅ Attack Flow V3 export completed');
+    } else if (format === 'flowviz') {
+      const techniques: string[] = [];
+      const tactics: string[] = [];
+
+      nodes.forEach(node => {
+        if (node.data.techniques) {
+          techniques.push(...node.data.techniques);
+        }
+        if (node.data.tactics) {
+          tactics.push(...node.data.tactics);
+        }
+      });
+
+      const flowVizData: SavedFlow = {
+        id: crypto.randomUUID(),
+        title: filename,
+        sourceUrl: contentType === 'url' ? url : undefined,
+        sourceText: contentType === 'text' ? url : undefined,
+        inputMode: contentType,
+        nodes,
+        edges,
+        metadata: {
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: '1.0.0',
+          description: 'Exported from FlowViz',
+          tags: [],
+          nodeCount: nodes.length,
+          edgeCount: edges.length,
+        },
+        visualization: {
+          viewport: reactFlowInstance?.getViewport(),
+          storyMode: { enabled: false }
+        },
+        analysis: {
+          extractedTechniques: [...new Set(techniques)],
+          extractedTactics: [...new Set(tactics)]
+        }
+      };
+
+      const dataStr = JSON.stringify(flowVizData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const objectUrl = URL.createObjectURL(dataBlob);
+
+      const link = document.createElement('a');
+      link.download = `${filename}-flowviz.json`;
+      link.href = objectUrl;
+      link.click();
+
+      URL.revokeObjectURL(objectUrl);
     }
-  }, [nodes, edges, reactFlowInstance]);
+  }, [nodes, edges, reactFlowInstance, contentType, url]);
 
   const handleClear = useCallback(() => {
     console.log('🧹 Clearing streaming visualization');

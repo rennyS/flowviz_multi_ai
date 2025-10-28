@@ -29,7 +29,7 @@ export interface HighlightedElements {
 }
 
 export interface ExportOptions {
-  format: 'png' | 'json';
+  format: 'png' | 'json' | 'flowviz';
   filename?: string;
 }
 
