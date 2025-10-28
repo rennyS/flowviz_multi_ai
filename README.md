@@ -2,21 +2,21 @@
 
 An open-source React application that analyzes cybersecurity articles and generates interactive attack flow visualizations using the MITRE ATT&CK framework.
 
-## ✨ Features
+## Features
 
-- 🔍 **Article Analysis**: Extract attack patterns from cybersecurity articles and reports
-- 📊 **Interactive Visualization**: Generate dynamic attack flow diagrams with real-time streaming
-- 🎯 **MITRE ATT&CK Integration**: Map techniques and tactics to the ATT&CK framework
-- 🖼️ **Image Analysis**: Process screenshots and diagrams from articles
-- 📤 **Multiple Export Formats**: Export as PNG, STIX 2.1 bundles, or Attack Flow Builder (.afb) files
-- ⚡ **Real-time Streaming**: Watch attack flows build in real-time as Claude analyzes content
-- 🎬 **Story Mode**: Cinematic playback of attack progression with customizable controls
-- 💾 **Save & Load**: Persistent storage of analyses with metadata and search capabilities
-- ⚙️ **Configurable**: Server-side configuration via environment variables
-- 🛡️ **Defensive Focus**: Built for security analysts and threat hunters
-- 🔒 **Secure Architecture**: Server-side API processing with SSRF protection
+- **Article Analysis**: Extract attack patterns from cybersecurity articles and reports
+- **Interactive Visualization**: Generate dynamic attack flow diagrams with real-time streaming
+- **MITRE ATT&CK Integration**: Map techniques and tactics to the ATT&CK framework
+- **Image Analysis**: Process screenshots and diagrams from articles
+- **Multiple Export Formats**: Export as PNG, STIX 2.1 bundles, Attack Flow Builder (.afb), or FlowViz JSON files
+- **Real-time Streaming**: Watch attack flows build in real-time as Claude analyzes content
+- **Story Mode**: Cinematic playback of attack progression with customizable controls
+- **Save & Load**: Persistent storage of analyses with metadata and search capabilities
+- **Configurable**: Server-side configuration via environment variables
+- **Defensive Focus**: Built for security analysts and threat hunters
+- **Secure Architecture**: Server-side API processing with SSRF protection
 
-## 🚀 Quick Start
+## Quick Start
 
 ## Prerequisites
 
@@ -75,7 +75,7 @@ An open-source React application that analyzes cybersecurity articles and genera
 
 4. **Save & Export**:
    - Save analyses with custom titles and descriptions
-   - Export as PNG images, STIX 2.1 bundles, or AFB files for Attack Flow Builder
+   - Export as PNG images, STIX 2.1 bundles, Attack Flow Builder (.afb), or FlowViz JSON files
    - Load previously saved analyses
 
 5. **Customize Experience**:
@@ -189,7 +189,7 @@ ANTHROPIC_API_KEY=your_api_key_here  # Required for server-side Anthropic API ca
 ```env
 # Anthropic Configuration
 ANTHROPIC_BASE_URL=https://api.anthropic.com  # Custom API endpoint (for proxies)
-ANTHROPIC_MODEL=claude-sonnet-4-20250514      # Default: Claude Sonnet 4
+ANTHROPIC_MODEL=claude-sonnet-4-5-20250929    # Default: Claude Sonnet 4.5
 # Note: Tested with both Claude 3.5 and 4 - Claude 4 performs better with larger context window
 # If cost is a concern, Claude 3.5 (claude-3-5-sonnet-20241022) can be used
 
@@ -202,13 +202,13 @@ RATE_LIMIT_ARTICLES=10       # Max article fetches per 15 min (default: 10)
 RATE_LIMIT_IMAGES=50         # Max image fetches per 10 min (default: 50)
 RATE_LIMIT_STREAMING=5       # Max AI requests per 5 min (default: 5)
 
-# Security - Size Limits  
+# Security - Size Limits
 MAX_REQUEST_SIZE=10mb        # Max request body size (default: 10mb)
 MAX_ARTICLE_SIZE=5242880     # Max article size in bytes (default: 5MB)
 MAX_IMAGE_SIZE=3145728       # Max image size in bytes (default: 3MB)
 
 # CORS Configuration
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000  # Comma-separated
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000  # Comma-separated
 ```
 
 See `.env.example` for a complete template with documentation.
