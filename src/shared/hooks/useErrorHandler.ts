@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ClaudeServiceError, NetworkError, APIError, ValidationError } from '../services/claude';
+import { AIServiceError, NetworkError, APIError, ValidationError } from '../../features/flow-analysis/services';
 
 export interface ErrorState {
   error: Error | null;
@@ -37,7 +37,7 @@ export const useErrorHandler = () => {
           title: 'Authentication Error',
           message: error.message,
           severity: 'error' as const,
-          suggestion: 'Please check your Anthropic API key in the environment variables.',
+          suggestion: 'Please verify your selected AI provider and API key in Settings.',
           canRetry: false
         };
       }
@@ -56,9 +56,9 @@ export const useErrorHandler = () => {
         return {
           title: 'API Quota Exceeded',
           message: error.message,
-          severity: 'error' as const,
-          suggestion: 'Please check your Anthropic account billing status and add credits if needed.',
-          canRetry: false
+          severity: 'warning' as const,
+          suggestion: 'Please review your AI provider usage limits and try again later.',
+          canRetry: true
         };
       }
       
@@ -81,7 +81,7 @@ export const useErrorHandler = () => {
       };
     }
     
-    if (error instanceof ClaudeServiceError) {
+    if (error instanceof AIServiceError) {
       return {
         title: 'Service Error',
         message: error.message,

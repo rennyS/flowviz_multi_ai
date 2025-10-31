@@ -4,8 +4,8 @@ import {
   Box,
   FormControlLabel,
   Switch,
-  MenuItem,
   InputLabel,
+  TextField,
 } from '@mui/material';
 import { 
   EnhancedDialog, 
@@ -33,6 +33,8 @@ interface SettingsDialogProps {
   edgeStyle: string;
   edgeCurve: string;
   storyModeSpeed: number;
+  aiProvider: 'anthropic' | 'openai' | 'gemini';
+  aiApiKey: string;
   onClose: () => void;
   onCinematicModeChange: (enabled: boolean) => void;
   onEdgeColorChange: (color: string) => void;
@@ -45,7 +47,11 @@ interface SettingsDialogProps {
     edgeStyle: string;
     edgeCurve: string;
     storyModeSpeed: number;
+    aiProvider: 'anthropic' | 'openai' | 'gemini';
+    aiApiKey: string;
   }) => void;
+  onAiProviderChange: (provider: 'anthropic' | 'openai' | 'gemini') => void;
+  onAiApiKeyChange: (key: string) => void;
 }
 
 export default function SettingsDialog({
@@ -55,6 +61,8 @@ export default function SettingsDialog({
   edgeStyle,
   edgeCurve,
   storyModeSpeed,
+  aiProvider,
+  aiApiKey,
   onClose,
   onCinematicModeChange,
   onEdgeColorChange,
@@ -62,6 +70,8 @@ export default function SettingsDialog({
   onEdgeCurveChange,
   onStoryModeSpeedChange,
   onSave,
+  onAiProviderChange,
+  onAiApiKeyChange,
 }: SettingsDialogProps) {
   // Local state for dialog - only apply on save
   const [localCinematicMode, setLocalCinematicMode] = useState(cinematicMode);
@@ -69,7 +79,9 @@ export default function SettingsDialog({
   const [localEdgeStyle, setLocalEdgeStyle] = useState(edgeStyle);
   const [localEdgeCurve, setLocalEdgeCurve] = useState(edgeCurve);
   const [localStoryModeSpeed, setLocalStoryModeSpeed] = useState(storyModeSpeed);
-  
+  const [localAiProvider, setLocalAiProvider] = useState<'anthropic' | 'openai' | 'gemini'>(aiProvider);
+  const [localAiApiKey, setLocalAiApiKey] = useState(aiApiKey);
+
   // Update local state when props change (when dialog opens)
   useEffect(() => {
     setLocalCinematicMode(cinematicMode);
@@ -77,8 +89,10 @@ export default function SettingsDialog({
     setLocalEdgeStyle(edgeStyle);
     setLocalEdgeCurve(edgeCurve);
     setLocalStoryModeSpeed(storyModeSpeed);
-  }, [cinematicMode, edgeColor, edgeStyle, edgeCurve, storyModeSpeed, open]);
-  
+    setLocalAiProvider(aiProvider);
+    setLocalAiApiKey(aiApiKey);
+  }, [cinematicMode, edgeColor, edgeStyle, edgeCurve, storyModeSpeed, aiProvider, aiApiKey, open]);
+
   const handleSave = () => {
     // Apply all settings at once by passing the local values directly
     onCinematicModeChange(localCinematicMode);
@@ -86,17 +100,21 @@ export default function SettingsDialog({
     onEdgeStyleChange(localEdgeStyle);
     onEdgeCurveChange(localEdgeCurve);
     onStoryModeSpeedChange(localStoryModeSpeed);
-    
+    onAiProviderChange(localAiProvider);
+    onAiApiKeyChange(localAiApiKey);
+
     // Pass the values to save immediately
     onSave({
       cinematicMode: localCinematicMode,
       edgeColor: localEdgeColor,
       edgeStyle: localEdgeStyle,
       edgeCurve: localEdgeCurve,
-      storyModeSpeed: localStoryModeSpeed
+      storyModeSpeed: localStoryModeSpeed,
+      aiProvider: localAiProvider,
+      aiApiKey: localAiApiKey
     });
   };
-  
+
   const handleCancel = () => {
     // Reset local state to current values
     setLocalCinematicMode(cinematicMode);
@@ -104,6 +122,8 @@ export default function SettingsDialog({
     setLocalEdgeStyle(edgeStyle);
     setLocalEdgeCurve(edgeCurve);
     setLocalStoryModeSpeed(storyModeSpeed);
+    setLocalAiProvider(aiProvider);
+    setLocalAiApiKey(aiApiKey);
     onClose();
   };
   return (
@@ -118,6 +138,62 @@ export default function SettingsDialog({
       <EnhancedDialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
           
+          <FormSection>
+            <FormSectionTitle>
+              AI Provider
+            </FormSectionTitle>
+
+            <Typography sx={{
+              color: 'rgba(255, 255, 255, 0.6)',
+              fontSize: '0.75rem',
+              mb: 2
+            }}>
+              Choose which AI service to use for analysis and provide the corresponding API key.
+            </Typography>
+
+            <DropdownFormControl fullWidth>
+              <InputLabel id="ai-provider-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                Provider
+              </InputLabel>
+              <DropdownSelect
+                labelId="ai-provider-label"
+                value={localAiProvider}
+                label="Provider"
+                onChange={(event) => setLocalAiProvider(event.target.value as 'anthropic' | 'openai' | 'gemini')}
+                MenuProps={dropdownMenuStylesDark}
+              >
+                <DropdownMenuItem value="anthropic">Anthropic Claude</DropdownMenuItem>
+                <DropdownMenuItem value="openai">OpenAI</DropdownMenuItem>
+                <DropdownMenuItem value="gemini">Google Gemini</DropdownMenuItem>
+              </DropdownSelect>
+            </DropdownFormControl>
+
+            <Box sx={{ mt: 3 }}>
+              <TextField
+                label="API Key"
+                type="password"
+                fullWidth
+                value={localAiApiKey}
+                onChange={(event) => setLocalAiApiKey(event.target.value)}
+                placeholder="Enter your API key"
+                InputLabelProps={{ sx: { color: 'rgba(255, 255, 255, 0.7)' } }}
+                inputProps={{
+                  autoComplete: 'off'
+                }}
+                FormHelperTextProps={{ sx: { color: 'rgba(255, 255, 255, 0.5)' } }}
+                helperText="Stored locally in your browser settings."
+                sx={{
+                  '& .MuiInputBase-input': {
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    '&::placeholder': {
+                      color: 'rgba(255, 255, 255, 0.4)'
+                    }
+                  }
+                }}
+              />
+            </Box>
+          </FormSection>
+
           <FormSection>
             <FormSectionTitle>
               Story Mode

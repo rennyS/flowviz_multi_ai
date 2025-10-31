@@ -36,6 +36,8 @@ export interface StreamingFlowVisualizationProps {
     edges: any[];
     viewport?: any;
   };
+  aiProvider?: 'anthropic' | 'openai' | 'gemini';
+  aiApiKey?: string;
   onExportAvailable?: (exportFn: (format: 'png' | 'json' | 'afb' | 'flowviz') => void) => void;
   onClearAvailable?: (clearFn: () => void) => void;
   onStoryModeAvailable?: (storyData: {
@@ -59,6 +61,8 @@ export interface StreamingFlowVisualizationProps {
 const StreamingFlowVisualizationContent: React.FC<StreamingFlowVisualizationProps> = ({ 
   url,
   loadedFlow,
+  aiProvider = 'anthropic',
+  aiApiKey = '',
   onExportAvailable,
   onClearAvailable,
   onStoryModeAvailable,
@@ -248,15 +252,25 @@ const StreamingFlowVisualizationContent: React.FC<StreamingFlowVisualizationProp
     if (!url || isStreaming || streamingClientRef.current || loadedFlow) return;
 
     const startStreaming = async () => {
+      if (!aiApiKey) {
+        const error = new Error('Please configure your AI provider API key in Settings before running an analysis.');
+        console.warn('⚠️ Missing AI API key - cannot start streaming');
+        onError?.(error);
+        onStreamingEnd?.();
+        setIsStreaming(false);
+        setShowLoadingIndicator(false);
+        return;
+      }
+
       setIsStreaming(true);
       setShowLoadingIndicator(true); // Show loading indicator when starting
       onStreamingStart?.(); // Notify parent that streaming has started
-      
+
       console.log('🚀 Starting streaming direct flow extraction...');
-      
+
       streamingClientRef.current = new StreamingDirectFlowClient();
-      
-      await streamingClientRef.current.extractDirectFlowStreaming(url, {
+
+      await streamingClientRef.current.extractDirectFlowStreaming(url, { provider: aiProvider, apiKey: aiApiKey }, {
         onProgress: (stage, message) => {
           onProgress?.(stage, message);
         },
@@ -341,7 +355,8 @@ const StreamingFlowVisualizationContent: React.FC<StreamingFlowVisualizationProp
     };
 
     startStreaming();
-  }, [url]); // Only depend on URL to avoid re-runs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiApiKey, aiProvider, getEdgeConfig, isStreaming, loadedFlow, onError, onProgress, onStreamingEnd, onStreamingStart, setEdges, setNodes, url]);
 
   // Track when re-layout needed
   const [needsLayout, setNeedsLayout] = useState(false);

@@ -1,6 +1,13 @@
 import { APIError } from './errors';
 import { Node, Edge } from 'reactflow';
 
+export type SupportedAIProvider = 'anthropic' | 'openai' | 'gemini';
+
+export interface StreamingAIConfig {
+  provider: SupportedAIProvider;
+  apiKey: string;
+}
+
 export interface StreamingDirectFlowCallbacks {
   onNode: (node: Node) => void;
   onEdge: (edge: Edge) => void;
@@ -17,28 +24,42 @@ export class StreamingDirectFlowClient {
   private emittedNodeIds = new Set<string>();
 
   async extractDirectFlowStreaming(
-    input: string, 
+    input: string,
+    aiConfig: StreamingAIConfig,
     callbacks: StreamingDirectFlowCallbacks
   ): Promise<void> {
     console.log('=== Starting Streaming Direct Flow Extraction ===');
-    
+
     try {
       // Determine if input is URL or text content
       const isUrl = input.startsWith('http://') || input.startsWith('https://');
-      
-      const response = await fetch('/api/claude-stream', {
+
+      const provider = aiConfig.provider || 'anthropic';
+      const providerLabel = provider === 'anthropic'
+        ? 'Anthropic Claude'
+        : provider === 'openai'
+          ? 'OpenAI'
+          : 'Google Gemini';
+
+      if (!aiConfig.apiKey) {
+        throw new APIError(`Missing API key for ${providerLabel}.`, 401);
+      }
+
+      const response = await fetch('/api/ai-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...(isUrl ? { url: input } : { text: input }),
+          provider,
+          apiKey: aiConfig.apiKey,
           system: "You are an expert in cyber threat intelligence analysis.",
         }),
       });
 
       if (!response.ok) {
-        throw new APIError(`Failed to stream from Claude: ${response.statusText}`, response.status);
+        throw new APIError(`Failed to stream from ${providerLabel}: ${response.statusText}`, response.status);
       }
 
       const reader = response.body?.getReader();

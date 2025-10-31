@@ -4,7 +4,7 @@ import { FlowAlert } from './shared/components/Alert';
 import { flowVizTheme } from './shared/theme/flowviz-theme';
 import { useQuery } from '@tanstack/react-query';
 import StreamingFlowVisualization from './features/flow-analysis/components/StreamingFlowVisualization';
-import { ClaudeServiceError, NetworkError, APIError, ValidationError } from './features/flow-analysis/services';
+import { AIServiceError, NetworkError, APIError, ValidationError } from './features/flow-analysis/services';
 import { SaveFlowDialog, LoadFlowDialog } from './features/flow-storage/components';
 import { SavedFlow } from './features/flow-storage/types/SavedFlow';
 import StreamingProgressBar from './shared/components/StreamingProgressBar';
@@ -58,6 +58,8 @@ export default function App() {
     edgeStyle,
     edgeCurve,
     storyModeSpeed,
+    aiProvider,
+    aiApiKey,
     
     // Flow management
     hasUnsavedChanges,
@@ -90,6 +92,8 @@ export default function App() {
     setEdgeStyle,
     setEdgeCurve,
     setStoryModeSpeed,
+    setAiProvider,
+    setAiApiKey,
     setHasUnsavedChanges,
     setIsLoadedFlow,
     setIsStreaming,
@@ -147,12 +151,12 @@ export default function App() {
           severity: 'error' as const,
           title: 'Authentication Error',
           message: error.message,
-          suggestion: 'Please check your Anthropic API key in the environment variables.',
+          suggestion: 'Please verify your configured AI provider and API key in Settings.',
           action: 'Check Configuration',
           icon: <WarningIcon />,
         };
       }
-      
+
       if (error.statusCode === 429) {
         return {
           severity: 'warning' as const,
@@ -163,15 +167,15 @@ export default function App() {
           icon: <WarningIcon />,
         };
       }
-      
+
       if (error.statusCode === 402) {
         return {
-          severity: 'error' as const,
+          severity: 'warning' as const,
           title: 'API Quota Exceeded',
           message: error.message,
-          suggestion: 'Please check your Anthropic account billing status and add credits if needed.',
-          action: 'Check Billing',
-          icon: <ErrorOutlineIcon />,
+          suggestion: 'Please review your AI provider usage limits and try again later.',
+          action: 'Wait and Retry',
+          icon: <WarningIcon />,
         };
       }
       
@@ -196,7 +200,7 @@ export default function App() {
       };
     }
     
-    if (error instanceof ClaudeServiceError) {
+    if (error instanceof AIServiceError) {
       return {
         severity: 'error' as const,
         title: 'Service Error',
@@ -420,6 +424,8 @@ export default function App() {
           edgeStyle={edgeStyle}
           edgeCurve={edgeCurve}
           storyModeSpeed={storyModeSpeed}
+          aiProvider={aiProvider}
+          aiApiKey={aiApiKey}
         />
       )}
 
@@ -536,6 +542,8 @@ export default function App() {
         edgeStyle={edgeStyle}
         edgeCurve={edgeCurve}
         storyModeSpeed={storyModeSpeed}
+        aiProvider={aiProvider}
+        aiApiKey={aiApiKey}
         onClose={() => setSettingsDialogOpen(false)}
         onCinematicModeChange={setCinematicMode}
         onEdgeColorChange={setEdgeColor}
@@ -543,6 +551,8 @@ export default function App() {
         onEdgeCurveChange={setEdgeCurve}
         onStoryModeSpeedChange={setStoryModeSpeed}
         onSave={handleSaveSettings}
+        onAiProviderChange={setAiProvider}
+        onAiApiKeyChange={setAiApiKey}
       />
     </Box>
   );

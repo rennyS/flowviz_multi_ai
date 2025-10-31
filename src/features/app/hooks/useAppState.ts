@@ -47,6 +47,8 @@ export const useAppState = () => {
   const [edgeStyle, setEdgeStyle] = useState('solid');
   const [edgeCurve, setEdgeCurve] = useState('smooth');
   const [storyModeSpeed, setStoryModeSpeed] = useState(3); // seconds, range 1-10
+  const [aiProvider, setAiProvider] = useState<'anthropic' | 'openai' | 'gemini'>('anthropic');
+  const [aiApiKey, setAiApiKey] = useState('');
   
   // Initialize settings from localStorage after mount
   useEffect(() => {
@@ -73,6 +75,16 @@ export const useAppState = () => {
     const storedStorySpeed = localStorage.getItem('story_mode_speed');
     if (storedStorySpeed) {
       setStoryModeSpeed(parseInt(storedStorySpeed, 10));
+    }
+
+    const storedProvider = localStorage.getItem('ai_provider');
+    if (storedProvider === 'anthropic' || storedProvider === 'openai' || storedProvider === 'gemini') {
+      setAiProvider(storedProvider);
+    }
+
+    const storedApiKey = localStorage.getItem('ai_api_key');
+    if (storedApiKey) {
+      setAiApiKey(storedApiKey);
     }
     
     setSettingsLoaded(true);
@@ -136,6 +148,8 @@ export const useAppState = () => {
     edgeStyle: string;
     edgeCurve: string;
     storyModeSpeed: number;
+    aiProvider: 'anthropic' | 'openai' | 'gemini';
+    aiApiKey: string;
   }) => {
     // Use provided settings or current state values
     const settingsToSave = newSettings || {
@@ -143,15 +157,27 @@ export const useAppState = () => {
       edgeColor,
       edgeStyle,
       edgeCurve,
-      storyModeSpeed
+      storyModeSpeed,
+      aiProvider,
+      aiApiKey
     };
-    
+
     // Save to localStorage
     localStorage.setItem('cinematic_mode', settingsToSave.cinematicMode.toString());
     localStorage.setItem('edge_color', settingsToSave.edgeColor);
     localStorage.setItem('edge_style', settingsToSave.edgeStyle);
     localStorage.setItem('edge_curve', settingsToSave.edgeCurve);
     localStorage.setItem('story_mode_speed', settingsToSave.storyModeSpeed.toString());
+    localStorage.setItem('ai_provider', settingsToSave.aiProvider);
+
+    if (settingsToSave.aiApiKey) {
+      localStorage.setItem('ai_api_key', settingsToSave.aiApiKey);
+    } else {
+      localStorage.removeItem('ai_api_key');
+    }
+
+    setAiProvider(settingsToSave.aiProvider);
+    setAiApiKey(settingsToSave.aiApiKey);
     
     showToast('Settings saved successfully', 'success');
     setSettingsDialogOpen(false);
@@ -209,6 +235,8 @@ export const useAppState = () => {
     edgeStyle,
     edgeCurve,
     storyModeSpeed,
+    aiProvider,
+    aiApiKey,
     
     // Flow management
     hasUnsavedChanges,
@@ -245,6 +273,8 @@ export const useAppState = () => {
     setEdgeStyle,
     setEdgeCurve,
     setStoryModeSpeed,
+    setAiProvider,
+    setAiApiKey,
     setHasUnsavedChanges,
     setIsLoadedFlow,
     setIsStreaming,
