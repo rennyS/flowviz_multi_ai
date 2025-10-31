@@ -52,7 +52,12 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://api.anthropic.com"],
+      connectSrc: [
+        "'self'",
+        "https://api.anthropic.com",
+        "https://api.openai.com",
+        "https://generativelanguage.googleapis.com"
+      ],
       scriptSrc: ["'self'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
@@ -401,7 +406,7 @@ function assessConfidence(analysisText, imageCount) {
 }
 
 // AI streaming endpoint for SSE - PROTECTED with strict rate limiting
-app.post('/api/claude-stream', rateLimits.streaming, async (req, res) => {
+app.post('/api/ai-stream', rateLimits.streaming, async (req, res) => {
   logger.info('Starting full-pipeline streaming request...');
   logger.debug('Request body received', { hasUrl: !!req.body.url, hasText: !!req.body.text });
   
@@ -413,19 +418,57 @@ app.post('/api/claude-stream', rateLimits.streaming, async (req, res) => {
   });
 
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    const baseURL = process.env.ANTHROPIC_BASE_URL;
-    logger.debug('API Key availability check', { available: !!apiKey, baseURLSet: !!baseURL });
-    
+    const requestedProvider = typeof req.body.provider === 'string' ? req.body.provider.toLowerCase() : 'anthropic';
+    const provider = ['anthropic', 'openai', 'gemini'].includes(requestedProvider) ? requestedProvider : 'anthropic';
+    const providerLabel = provider === 'openai'
+      ? 'OpenAI'
+      : provider === 'gemini'
+        ? 'Google Gemini'
+        : 'Anthropic Claude';
+
+    let apiKey = typeof req.body.apiKey === 'string' ? req.body.apiKey.trim() : '';
     if (!apiKey) {
-      logger.error('Missing Anthropic API key configuration');
-      res.write(`data: ${JSON.stringify({ error: 'Server configuration error: Anthropic API key not configured' })}\n\n`);
+      if (provider === 'openai') {
+        apiKey = process.env.OPENAI_API_KEY || '';
+      } else if (provider === 'gemini') {
+        apiKey = process.env.GEMINI_API_KEY || '';
+      } else {
+        apiKey = process.env.ANTHROPIC_API_KEY || '';
+      }
+    }
+
+    const baseURL = typeof req.body.baseUrl === 'string' && req.body.baseUrl.trim()
+      ? req.body.baseUrl.trim()
+      : provider === 'openai'
+        ? process.env.OPENAI_BASE_URL
+        : provider === 'gemini'
+          ? process.env.GEMINI_BASE_URL
+          : process.env.ANTHROPIC_BASE_URL;
+
+    const model = typeof req.body.model === 'string' && req.body.model.trim()
+      ? req.body.model.trim()
+      : provider === 'openai'
+        ? process.env.OPENAI_MODEL || 'gpt-4o-mini'
+        : provider === 'gemini'
+          ? process.env.GEMINI_MODEL || 'gemini-1.5-pro'
+          : process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+
+    logger.debug('AI provider configuration', {
+      provider,
+      hasKey: !!apiKey,
+      hasBaseUrl: !!baseURL,
+      model
+    });
+
+    if (!apiKey) {
+      logger.error(`Missing API key configuration for provider: ${provider}`);
+      res.write(`data: ${JSON.stringify({ error: `Server configuration error: ${providerLabel} API key not configured` })}\n\n`);
       res.end();
       return;
     }
 
     const { url, text, system } = req.body;
-    logger.debug('Processing request', { hasUrl: !!url, hasText: !!text, urlPreview: url?.substring(0, 50) });
+    logger.debug('Processing request', { provider, hasUrl: !!url, hasText: !!text, urlPreview: url?.substring(0, 50) });
     
     if (!url && !text) {
       logger.warn('Request missing both URL and text');
@@ -522,9 +565,9 @@ app.post('/api/claude-stream', rateLimits.streaming, async (req, res) => {
           }
           
           // If we have images, analyze them with Claude
-          if (processedImages.length > 0) {
-            logger.info(`Processing ${processedImages.length} images with vision analysis`);
-            
+          if (processedImages.length > 0 && provider === 'anthropic') {
+            logger.info(`Processing ${processedImages.length} images with Anthropic vision analysis`);
+
             const visionPrompt = `You are analyzing ${processedImages.length} images from a cybersecurity article to enhance threat intelligence analysis.
 
 Article context (first 1000 chars):
@@ -555,9 +598,9 @@ Focus on actionable technical intelligence that supplements the article text.`;
               anthropicConfig.baseURL = baseURL;
             }
             const anthropic = new Anthropic(anthropicConfig);
-            const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+            const visionModel = model;
             const visionResponse = await anthropic.messages.create({
-              model: model,
+              model: visionModel,
               max_tokens: 4000,
               temperature: 0.1,
               messages: [{ role: 'user', content: messageContent }]
@@ -568,6 +611,8 @@ Focus on actionable technical intelligence that supplements the article text.`;
               finalText = `${finalText}\n\n=== VISION ANALYSIS ===\n${visionAnalysis}`;
               logger.info(`✅ Vision analysis completed: ${visionAnalysis.length} characters added`);
             }
+          } else if (processedImages.length > 0) {
+            logger.info(`Skipping vision analysis for provider ${providerLabel}`);
           }
         } catch (visionError) {
           logger.warn('Vision analysis failed:', visionError.message);
@@ -581,7 +626,7 @@ Focus on actionable technical intelligence that supplements the article text.`;
     }
 
     // Step 3: Start AI streaming analysis
-    res.write(`data: ${JSON.stringify({ type: 'progress', stage: 'ai_analysis', message: 'Starting AI analysis...' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'progress', stage: 'ai_analysis', message: `Starting ${providerLabel} analysis...` })}\n\n`);
 
     const prompt = `You are an expert in cyber threat intelligence and MITRE ATT&CK. Analyze this article and create React Flow nodes and edges directly.
 
@@ -702,55 +747,154 @@ Article: "${finalText.substring(0, 50000)}"
 Article text:
 `;
 
-    const anthropicApiUrl = baseURL ? `${baseURL}/v1/messages` : 'https://api.anthropic.com/v1/messages';
-    const aiResponse = await fetch(anthropicApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929',
-        max_tokens: 16000,
-        temperature: 0.1,
-        stream: true,
-        messages: [{ role: 'user', content: prompt }],
-        system: system || "You are an expert in cyber threat intelligence analysis."
-      }),
-    });
+    const systemPrompt = system || 'You are an expert in cyber threat intelligence analysis.';
 
-    if (!aiResponse.ok) {
-      const error = await aiResponse.text();
-      res.write(`data: ${JSON.stringify({ error })}\n\n`);
+    if (provider === 'anthropic') {
+      const anthropicBase = baseURL ? baseURL.replace(/\/+$/, '') : 'https://api.anthropic.com';
+      const anthropicApiUrl = `${anthropicBase}/v1/messages`;
+      const aiResponse = await fetch(anthropicApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 16000,
+          temperature: 0.1,
+          stream: true,
+          messages: [{ role: 'user', content: prompt }],
+          system: systemPrompt
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const error = await aiResponse.text();
+        res.write(`data: ${JSON.stringify({ type: 'error', error })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+        return;
+      }
+
+      if (!aiResponse.body) {
+        throw new Error('No response body available');
+      }
+
+      aiResponse.body.on('data', (chunk) => {
+        const data = chunk.toString();
+        logger.debug('Streaming chunk to client', { preview: data.slice(0, 100) });
+        res.write(data);
+      });
+
+      aiResponse.body.on('end', () => {
+        logger.info('AI streaming completed successfully');
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+      });
+
+      aiResponse.body.on('error', (error) => {
+        logger.error('AI streaming error:', error);
+        res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+      });
+      return;
+    }
+
+    if (provider === 'openai') {
+      const openaiBase = baseURL ? baseURL.replace(/\/+$/, '') : 'https://api.openai.com';
+      const openaiUrl = `${openaiBase}/v1/chat/completions`;
+      const openaiResponse = await fetch(openaiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.1,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt }
+          ]
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const error = await openaiResponse.text();
+        logger.error('OpenAI request failed', { status: openaiResponse.status, error });
+        res.write(`data: ${JSON.stringify({ type: 'error', error })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+        return;
+      }
+
+      const openaiJson = await openaiResponse.json();
+      const combinedText = (openaiJson.choices || [])
+        .map((choice) => choice.message?.content || '')
+        .filter(Boolean)
+        .join('\n');
+
+      if (!combinedText) {
+        throw new Error('OpenAI returned an empty response.');
+      }
+
+      res.write(`data: ${JSON.stringify({ type: 'content_block_delta', delta: { text: combinedText } })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'message_stop' })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
       res.end();
       return;
     }
 
-    // Stream AI response - node-fetch uses different API than browser fetch
-    if (!aiResponse.body) {
-      throw new Error('No response body available');
+    // Gemini provider
+    const geminiBase = baseURL ? baseURL.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com';
+    const geminiUrl = new URL(`/v1beta/models/${model}:generateContent`, geminiBase);
+    geminiUrl.searchParams.set('key', apiKey);
+
+    const geminiResponse = await fetch(geminiUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    if (!geminiResponse.ok) {
+      const error = await geminiResponse.text();
+      logger.error('Gemini request failed', { status: geminiResponse.status, error });
+      res.write(`data: ${JSON.stringify({ type: 'error', error })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
+      res.end();
+      return;
     }
 
-    // Handle streaming with node-fetch - it uses Node.js streams, not ReadableStream
-    aiResponse.body.on('data', (chunk) => {
-      const data = chunk.toString();
-      logger.debug('Streaming chunk to client', { preview: data.slice(0, 100) });
-      res.write(data);
-    });
+    const geminiJson = await geminiResponse.json();
+    const geminiText = (geminiJson.candidates || [])
+      .flatMap((candidate) => candidate.content?.parts || [])
+      .map((part) => part.text || '')
+      .filter(Boolean)
+      .join('\n');
 
-    aiResponse.body.on('end', () => {
-      logger.info('AI streaming completed successfully');
-      res.write(`data: [DONE]\n\n`);
-      res.end();
-    });
+    if (!geminiText) {
+      throw new Error('Gemini returned an empty response.');
+    }
 
-    aiResponse.body.on('error', (error) => {
-      logger.error('AI streaming error:', error);
-      res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
-      res.write(`data: [DONE]\n\n`);
-      res.end();
-    });
+    res.write(`data: ${JSON.stringify({ type: 'content_block_delta', delta: { text: geminiText } })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'message_stop' })}\n\n`);
+    res.write(`data: [DONE]\n\n`);
+    res.end();
 
   } catch (err) {
     logger.error('Full-pipeline streaming error:', { message: err.message, stack: err.stack });

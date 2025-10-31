@@ -2,7 +2,7 @@ import React from 'react';
 import { Alert, AlertTitle, Box, Button, Typography } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import ErrorBoundary from './ErrorBoundary';
-import { ClaudeServiceError, NetworkError, APIError, ValidationError } from '../../../features/flow-analysis/services';
+import { AIServiceError, NetworkError, APIError, ValidationError } from '../../../features/flow-analysis/services';
 
 interface ServiceErrorBoundaryProps {
   children: React.ReactNode;
@@ -27,17 +27,27 @@ const ServiceErrorFallback: React.FC<{ error: Error; onRetry?: () => void }> = (
           severity: 'error' as const,
           title: 'Authentication Error',
           message: error.message,
-          suggestion: 'Please check your Anthropic API key configuration.',
+          suggestion: 'Please verify your AI provider selection and API key in Settings.',
           canRetry: false
         };
       }
-      
+
       if (error.statusCode === 429) {
         return {
           severity: 'warning' as const,
           title: 'Rate Limit Exceeded',
           message: error.message,
           suggestion: 'Please wait a moment before trying again.',
+          canRetry: true
+        };
+      }
+
+      if (error.statusCode === 402) {
+        return {
+          severity: 'warning' as const,
+          title: 'API Quota Exceeded',
+          message: error.message,
+          suggestion: 'Please review your AI provider usage limits and try again later.',
           canRetry: true
         };
       }
@@ -61,7 +71,7 @@ const ServiceErrorFallback: React.FC<{ error: Error; onRetry?: () => void }> = (
       };
     }
     
-    if (error instanceof ClaudeServiceError) {
+    if (error instanceof AIServiceError) {
       return {
         severity: 'error' as const,
         title: 'Service Error',
@@ -138,9 +148,9 @@ const ServiceErrorBoundary: React.FC<ServiceErrorBoundaryProps> = ({ children, o
       fallback={<ServiceErrorFallback error={new Error('Service error')} onRetry={onRetry} />}
       onError={(error) => {
         // Log service errors for monitoring
-        if (error instanceof ClaudeServiceError || 
-            error instanceof NetworkError || 
-            error instanceof APIError || 
+        if (error instanceof AIServiceError ||
+            error instanceof NetworkError ||
+            error instanceof APIError ||
             error instanceof ValidationError) {
           console.error('Service error caught by boundary:', {
             type: error.constructor.name,
