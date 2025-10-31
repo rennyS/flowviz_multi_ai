@@ -70,7 +70,7 @@ export default function AppBar({
 
   return (
     <MuiAppBar 
-      position="static" 
+      position="sticky" 
       elevation={0}
       sx={{ 
         backgroundColor: '#0d1117',
@@ -80,6 +80,8 @@ export default function AppBar({
           linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%)
         `,
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+        top: 0,
+        zIndex: (theme) => theme.zIndex.appBar + 1,
       }}
     >
       <Toolbar sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: '64px' }}>

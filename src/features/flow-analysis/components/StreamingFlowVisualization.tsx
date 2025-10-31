@@ -360,11 +360,67 @@ const StreamingFlowVisualizationContent: React.FC<StreamingFlowVisualizationProp
 
   // Track when re-layout needed
   const [needsLayout, setNeedsLayout] = useState(false);
-  
+
+  // Automatically layout if nodes arrive without positions (e.g., parsed imports)
+  useEffect(() => {
+    if (nodes.length < 2) {
+      return;
+    }
+
+    // Detect when all nodes share the default origin position (stacked)
+    const allStacked = nodes.every((node) => {
+      const { x = 0, y = 0 } = node.position || { x: 0, y: 0 };
+      return Math.abs(x) < 1 && Math.abs(y) < 1;
+    });
+
+    if (!allStacked) {
+      return;
+    }
+
+    const layouted = getLayoutedElements(
+      nodes.map((node) => ({
+        ...node,
+        position: node.position ?? { x: 0, y: 0 },
+      })),
+      edges
+    );
+
+    const layoutIntroducesChange = layouted.nodes.some((layoutNode) => {
+      const currentNode = nodes.find((node) => node.id === layoutNode.id);
+      if (!currentNode) {
+        return false;
+      }
+
+      const currentX = currentNode.position?.x ?? 0;
+      const currentY = currentNode.position?.y ?? 0;
+      return (
+        Math.abs(currentX - layoutNode.position.x) > 1 ||
+        Math.abs(currentY - layoutNode.position.y) > 1
+      );
+    });
+
+    if (!layoutIntroducesChange) {
+      return;
+    }
+
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        const layoutNode = layouted.nodes.find((layout) => layout.id === node.id);
+        if (!layoutNode) {
+          return node;
+        }
+        return {
+          ...node,
+          position: layoutNode.position,
+        };
+      })
+    );
+  }, [nodes, edges, setNodes]);
+
   // Re-layout the graph only during streaming
   useEffect(() => {
     if (!isStreaming) return; // Early exit if not streaming
-    
+
     if (nodes.length > 0 || edges.length > 0) {
       console.log(`🎯 Layout trigger: ${nodes.length} nodes, ${edges.length} edges, streaming: ${isStreaming}`);
       // Only update layout during streaming
@@ -924,3 +980,4 @@ const StreamingFlowVisualization: React.FC<StreamingFlowVisualizationProps> = (p
 };
 
 export default StreamingFlowVisualization;
+

@@ -450,7 +450,7 @@ app.post('/api/ai-stream', rateLimits.streaming, async (req, res) => {
       : provider === 'openai'
         ? process.env.OPENAI_MODEL || 'gpt-4o-mini'
         : provider === 'gemini'
-          ? process.env.GEMINI_MODEL || 'gemini-1.5-pro'
+          ? process.env.GEMINI_MODEL || 'gemini-2.5-pro'
           : process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
 
     logger.debug('AI provider configuration', {
@@ -564,7 +564,7 @@ app.post('/api/ai-stream', rateLimits.streaming, async (req, res) => {
             }
           }
           
-          // If we have images, analyze them with Claude
+          // If we have images, run provider-specific vision analysis
           if (processedImages.length > 0 && provider === 'anthropic') {
             logger.info(`Processing ${processedImages.length} images with Anthropic vision analysis`);
 
@@ -610,6 +610,67 @@ Focus on actionable technical intelligence that supplements the article text.`;
             if (visionAnalysis.trim()) {
               finalText = `${finalText}\n\n=== VISION ANALYSIS ===\n${visionAnalysis}`;
               logger.info(`✅ Vision analysis completed: ${visionAnalysis.length} characters added`);
+            }
+          } else if (processedImages.length > 0 && provider === 'gemini') {
+            logger.info(`Processing ${processedImages.length} images with Gemini vision analysis`);
+
+            const visionPrompt = `You are analyzing ${processedImages.length} images from a cybersecurity article to enhance threat intelligence analysis.
+
+Article context (first 1000 chars):
+${finalText.substring(0, 1000)}...
+
+Please analyze the images and provide:
+1. Technical details visible in screenshots (commands, file paths, network indicators)
+2. Attack techniques or tools shown
+3. Any MITRE ATT&CK relevant information
+4. System configurations or vulnerabilities displayed
+
+Focus on actionable technical intelligence that supplements the article text.`;
+
+            const geminiBase = baseURL ? baseURL.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com';
+            const geminiUrl = new URL(`/v1beta/models/${model}:generateContent`, geminiBase);
+            geminiUrl.searchParams.set('key', apiKey);
+
+            const requestBody = {
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    { text: visionPrompt },
+                    ...processedImages.map((image) => ({
+                      inlineData: {
+                        data: image.base64Data,
+                        mimeType: image.mediaType
+                      }
+                    }))
+                  ]
+                }
+              ]
+            };
+
+            const geminiResponse = await fetch(geminiUrl.toString(), {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(requestBody)
+            });
+
+            if (!geminiResponse.ok) {
+              const errorText = await geminiResponse.text();
+              logger.warn('Gemini vision analysis failed', { status: geminiResponse.status, error: errorText });
+            } else {
+              const geminiJson = await geminiResponse.json();
+              const visionText = (geminiJson.candidates || [])
+                .flatMap((candidate) => candidate.content?.parts || [])
+                .map((part) => part.text || '')
+                .filter(Boolean)
+                .join('\n');
+
+              if (visionText.trim()) {
+                finalText = `${finalText}\n\n=== VISION ANALYSIS ===\n${visionText}`;
+                logger.info(`✅ Gemini vision analysis completed: ${visionText.length} characters added`);
+              }
             }
           } else if (processedImages.length > 0) {
             logger.info(`Skipping vision analysis for provider ${providerLabel}`);
@@ -954,4 +1015,4 @@ if (process.env.NODE_ENV === 'production') {
 app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Health check: http://localhost:${PORT}/health`);
-}); 
+});
